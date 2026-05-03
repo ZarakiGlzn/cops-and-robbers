@@ -130,22 +130,21 @@ public class Controller : MonoBehaviour
         switch (state)
         {
             case Constants.CopSelected:
-                //Si es una casilla roja, nos movemos
+                // Si es una casilla seleccionable (roja), nos movemos
                 if (tiles[clickedTile].selectable)
                 {
                     cops[clickedCop].GetComponent<CopMove>().MoveToTile(tiles[clickedTile]);
                     cops[clickedCop].GetComponent<CopMove>().currentTile = tiles[clickedTile].numTile;
                     tiles[clickedTile].current = true;
 
+                    // Pasamos al estado de movimiento. A partir de aquí, ignoraremos clics hasta que termine.
                     state = Constants.TileSelected;
                 }
                 break;
-            case Constants.TileSelected:
-                state = Constants.Init;
-                break;
-            case Constants.RobberTurn:
-                state = Constants.Init;
-                break;
+
+                // Eliminamos explícitamente los casos TileSelected y RobberTurn.
+                // Si el jugador hace clic en esos estados, el switch simplemente no hace NADA,
+                // que es exactamente lo que queremos para evitar bugs.
         }
     }
 
