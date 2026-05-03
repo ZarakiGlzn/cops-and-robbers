@@ -177,7 +177,6 @@ public class Controller : MonoBehaviour
         tiles[clickedTile].current = true;
         FindSelectableTiles(false);
 
-        // Recopilamos todas las casillas a las que puede ir
         List<Tile> selectableTiles = new List<Tile>();
         foreach (Tile tile in tiles)
         {
@@ -187,20 +186,77 @@ public class Controller : MonoBehaviour
             }
         }
 
-        // Elegimos una aleatoria si hay opciones
         if (selectableTiles.Count > 0)
         {
-            int randomIndex = Random.Range(0, selectableTiles.Count);
-            Tile chosenTile = selectableTiles[randomIndex];
+            Tile bestTile = null;
+            int maxDistance = -1;
 
-            // Movemos al caco a esa casilla
-            robber.GetComponent<RobberMove>().MoveToTile(chosenTile);
+            // Evaluamos cada casilla a la que podemos movernos
+            foreach (Tile t in selectableTiles)
+            {
+                int distToCop = GetDistanceToClosestCop(t);
 
-            // Actualizamos la variable currentTile del caco
-            robber.GetComponent<RobberMove>().currentTile = chosenTile.numTile;
+                // Buscamos maximizar la distancia al policía más cercano
+                if (distToCop > maxDistance)
+                {
+                    maxDistance = distToCop;
+                    bestTile = t;
+                }
+                // Si la distancia es la misma, usamos probabilidad para desempatar y que no se quede "atascado" haciendo el mismo bucle
+                else if (distToCop == maxDistance)
+                {
+                    if (Random.value > 0.5f)
+                    {
+                        bestTile = t;
+                    }
+                }
+            }
+
+            // Movemos al caco a la mejor casilla encontrada
+            robber.GetComponent<RobberMove>().MoveToTile(bestTile);
+            robber.GetComponent<RobberMove>().currentTile = bestTile.numTile;
         }
     }
+    // BFS auxiliar para calcular la distancia desde una casilla dada hasta el policía más cercano
+    public int GetDistanceToClosestCop(Tile startTile)
+    {
+        int cop0Tile = cops[0].GetComponent<CopMove>().currentTile;
+        int cop1Tile = cops[1].GetComponent<CopMove>().currentTile;
 
+        // Si la casilla ya tiene un poli encima, la distancia es 0 (¡muerte segura!)
+        if (startTile.numTile == cop0Tile || startTile.numTile == cop1Tile) return 0;
+
+        Queue<Tile> nodes = new Queue<Tile>();
+        bool[] visited = new bool[Constants.NumTiles];
+        int[] dist = new int[Constants.NumTiles];
+
+        nodes.Enqueue(startTile);
+        visited[startTile.numTile] = true;
+        dist[startTile.numTile] = 0; // Distancia inicial
+
+        while (nodes.Count > 0)
+        {
+            Tile current = nodes.Dequeue();
+
+            // Si hemos encontrado a un policía, devolvemos la distancia actual
+            if (current.numTile == cop0Tile || current.numTile == cop1Tile)
+            {
+                return dist[current.numTile];
+            }
+
+            // Exploramos los vecinos
+            foreach (int adjIndex in current.adjacency)
+            {
+                if (!visited[adjIndex])
+                {
+                    visited[adjIndex] = true;
+                    dist[adjIndex] = dist[current.numTile] + 1;
+                    nodes.Enqueue(tiles[adjIndex]);
+                }
+            }
+        }
+        return 0; // Por seguridad, aunque en un grafo conectado nunca debería llegar aquí
+    }
     public void EndGame(bool end)
     {
         if (end)
